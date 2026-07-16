@@ -20,9 +20,7 @@
 ## 📖 使い方
 
 1. 下記のURLをブラウザで開く(スマートフォン・タブレット・PCいずれも可)
-   ```
-https://playa2021git.github.io/audio-waveform-display/
-　　```
+   ```https://playa2021git.github.io/audio-waveform-display/```
 2. 「マイク接続」を押し、ブラウザのマイク使用許可を「許可」する
 3. 声を出したり、近くでスピーカーを鳴らしたりして波形の変化を観察する
 4. 表示モードや感度、色を変えて見比べてみる
