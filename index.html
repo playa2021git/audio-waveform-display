@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>音の波形・スピーカーの仕組み学習ビジュアライザー</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* スライダーやカスタムデザインの微調整 */
+    input[type="range"] {
+      accent-color: #3b82f6;
+    }
+    .retro-grid {
+      background-size: 40px 40px;
+      background-image: linear-gradient(to right, rgba(0, 255, 0, 0.1) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(0, 255, 0, 0.1) 1px, transparent 1px);
+    }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen font-sans flex flex-col justify-between">
+
+  <!-- ヘッダー -->
+  <header class="bg-gray-900 border-b border-gray-800 p-4 shadow-md">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-blue-600 rounded-xl text-white animate-pulse">
+          <i class="fa-solid fa-volume-high text-2xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl md:text-2xl font-bold tracking-wider text-white">音の波形とスピーカーの仕組み</h1>
+          <p id="header-subtitle" class="text-xs text-blue-400 font-semibold">中学校技術科：情報の技術・デジタル信号の学習用教材</p>
+        </div>
+      </div>
+      
+      <!-- メッセージ表示エリア (スピーカーの核となる解説) -->
+      <div class="bg-blue-950/80 border border-blue-700/50 px-4 py-2 rounded-xl max-w-lg text-center">
+        <p class="text-xs font-bold text-blue-200">
+          <i class="fa-solid fa-circle-info mr-1 text-blue-400"></i>
+          この電気の波（信号）の変化が、スピーカーのコイルを震わせ、コーン紙を動かして空気を震わせます！
+        </p>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="max-w-7xl mx-auto p-4 w-full flex-grow grid grid-cols-1 lg:grid-cols-12 gap-5">
+    
+    <!-- 左側：コントロールパネル（ボタン数を減らし文字を大きく） -->
+    <section class="lg:col-span-4 flex flex-col gap-4">
+      
+      <!-- 1. 音源をえらぶ -->
+      <div class="bg-gray-900 p-5 rounded-2xl border border-gray-800 shadow-lg flex flex-col gap-4">
+        <h2 class="text-lg font-bold text-blue-400 border-b border-gray-800 pb-2 flex items-center gap-2">
+          <span class="bg-blue-950 text-blue-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black">1</span>
+          音の出し方（音源）をえらぶ
+        </h2>
+
+        <!-- 音源切り替えタブ -->
+        <div class="grid grid-cols-3 gap-1 bg-gray-950 p-1 rounded-xl border border-gray-800 text-xs md:text-sm">
+          <button id="tab-mic" class="py-2.5 rounded-lg font-bold transition-all bg-blue-600 text-white">
+            <i class="fa-solid fa-microphone block mb-1 text-sm"></i>マイク
+          </button>
+          <button id="tab-osc" class="py-2.5 rounded-lg font-bold transition-all text-gray-400 hover:text-white">
+            <i class="fa-solid fa-wave-square block mb-1 text-sm"></i>発振器 (テスト音)
+          </button>
+          <button id="tab-file" class="py-2.5 rounded-lg font-bold transition-all text-gray-400 hover:text-white">
+            <i class="fa-solid fa-file-audio block mb-1 text-sm"></i>ファイル
+          </button>
+        </div>
+
+        <!-- 各ソースのコントロール -->
+        <!-- A. マイク入力 -->
+        <div id="panel-mic" class="flex flex-col gap-3 py-1">
+          <p class="text-xs text-gray-400 leading-relaxed">声をマイクに吹き込んだり、自分の持っているスピーカーを近づけて波形を見てみましょう。</p>
+          
+          <div class="grid grid-cols-2 gap-2 mt-1" id="mic-buttons-container">
+            <button id="btn-mic-start" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition text-sm active:scale-95 shadow-md">
+              <i class="fa-solid fa-circle-play text-base"></i> マイク接続
+            </button>
+            <button id="btn-mic-stop" class="bg-gray-800 hover:bg-gray-700 text-gray-400 font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition text-sm active:scale-95 border border-gray-700 cursor-not-allowed" disabled>
+              <i class="fa-solid fa-circle-stop text-base"></i> 停止する
+            </button>
+          </div>
+
+          <div id="mic-status" class="text-xs text-center text-gray-500 italic">マイクはつながっていません</div>
+        </div>
+
+        <!-- B. 発振器 (プリセット付き) -->
+        <div id="panel-osc" class="hidden flex flex-col gap-4 py-1">
+          <p class="text-xs text-gray-400 leading-relaxed">一定の高さの音（電気の波）を自分で作り出して、スピーカーを動かす信号をテストします。</p>
+
+          <!-- 授業用ワンタップ周波数プリセット -->
+          <div class="flex flex-col gap-1.5 bg-gray-950 p-3 rounded-xl border border-gray-800">
+            <span class="text-xs font-bold text-gray-400"><i class="fa-solid fa-wand-magic-sparkles mr-1 text-blue-400"></i>音の高さプリセット (授業用)</span>
+            <div class="grid grid-cols-3 gap-2 mt-1">
+              <button id="btn-preset-low" class="bg-gray-800 hover:bg-gray-700 text-gray-200 py-2 px-1 rounded-lg text-xs font-bold transition border border-gray-700">
+                低い音 (220Hz)
+              </button>
+              <button id="btn-preset-mid" class="bg-gray-800 hover:bg-blue-900/50 hover:text-blue-200 text-gray-200 py-2 px-1 rounded-lg text-xs font-bold transition border border-blue-800">
+                基準音 (440Hz)
+              </button>
+              <button id="btn-preset-high" class="bg-gray-800 hover:bg-gray-700 text-gray-200 py-2 px-1 rounded-lg text-xs font-bold transition border border-gray-700">
+                高い音 (880Hz)
+              </button>
+            </div>
+          </div>
+          
+          <!-- 音の大きさ -->
+          <div class="flex flex-col gap-1.5">
+            <div class="flex justify-between text-xs font-bold text-gray-300">
+              <span>音の大きさ (コーン紙の振れ幅)</span>
+              <span id="osc-vol-val" class="font-mono text-blue-400 font-bold">50%</span>
+            </div>
+            <input type="range" id="osc-volume" min="0" max="1" step="0.01" value="0.5" class="w-full h-2.5 bg-gray-800 rounded-lg cursor-pointer">
+          </div>
+
+          <!-- 音の高さスライダー -->
+          <div class="flex flex-col gap-1.5">
+            <div class="flex justify-between text-xs font-bold text-gray-300">
+              <span>音の高さ (細かさ：周波数)</span>
+              <span id="osc-freq-val" class="font-mono text-blue-400 font-bold">440 Hz</span>
+            </div>
+            <input type="range" id="osc-frequency" min="100" max="1500" step="1" value="440" class="w-full h-2.5 bg-gray-800 rounded-lg cursor-pointer">
+          </div>
+
+          <!-- 波の形 -->
+          <div class="flex flex-col gap-1">
+            <span class="text-xs font-bold text-gray-300">電気の波の形 (音色)</span>
+            <div class="grid grid-cols-4 gap-1 text-[11px] bg-gray-950 p-1 rounded-lg border border-gray-800 text-center font-bold">
+              <button id="osc-type-sine" class="py-1.5 rounded bg-blue-600 text-white">サイン波</button>
+              <button id="osc-type-triangle" class="py-1.5 rounded text-gray-400 hover:text-white">三角波</button>
+              <button id="osc-type-square" class="py-1.5 rounded text-gray-400 hover:text-white">四角波</button>
+              <button id="osc-type-sawtooth" class="py-1.5 rounded text-gray-400 hover:text-white">ノコギリ波</button>
+            </div>
+          </div>
+
+          <!-- オン・オフボタン -->
+          <div class="grid grid-cols-2 gap-2 mt-1">
+            <button id="btn-osc-start" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition text-sm active:scale-95 shadow-md">
+              <i class="fa-solid fa-volume-high"></i> 音を出す
+            </button>
+            <button id="btn-osc-stop" class="bg-gray-800 hover:bg-gray-700 text-gray-400 font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition text-sm active:scale-95 border border-gray-700 cursor-not-allowed" disabled>
+              <i class="fa-solid fa-volume-xmark"></i> 音を止める
+            </button>
+          </div>
+        </div>
+
+        <!-- C. 音声ファイル -->
+        <div id="panel-file" class="hidden flex flex-col gap-3 py-1">
+          <p class="text-xs text-gray-400">コンピュータ内の音楽ファイルを読み込ませて、実際の曲の複雑な電気波形を見てみましょう。</p>
+          <div class="mt-1">
+            <label class="block w-full bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 text-center py-2.5 px-4 rounded-xl cursor-pointer transition text-xs font-semibold">
+              <i class="fa-solid fa-cloud-arrow-up mr-2 text-base"></i>音楽ファイルをよみこむ
+              <input type="file" id="file-input" accept="audio/*" class="hidden">
+            </label>
+            <div id="file-name" class="text-xs text-center text-gray-500 mt-2 truncate">ファイルが選ばれていません</div>
+          </div>
+          <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800 mt-1 flex flex-col gap-2">
+            <audio id="audio-player" class="w-full hidden" controls></audio>
+            <div class="flex items-center justify-between gap-3">
+              <button id="btn-play-pause" class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-500 disabled:opacity-50" disabled>
+                <i class="fa-solid fa-play"></i>
+              </button>
+              <div class="flex-grow">
+                <div class="text-[10px] text-gray-500">再生位置</div>
+                <div id="file-progress-bar" class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden mt-1">
+                  <div id="file-progress" class="bg-blue-500 h-full w-0"></div>
+                </div>
+              </div>
+              <span id="file-time" class="text-xs font-mono text-gray-400">0:00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 表示の仕方をかえる -->
+      <div class="bg-gray-900 p-5 rounded-2xl border border-gray-800 shadow-lg flex flex-col gap-4">
+        <h2 class="text-lg font-bold text-blue-400 border-b border-gray-800 pb-2 flex items-center gap-2">
+          <span class="bg-blue-950 text-blue-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black">2</span>
+          画面の表示モードをかえる
+        </h2>
+
+        <!-- 生徒用に3つに厳選した表示モード選択 -->
+        <div class="flex flex-col gap-2">
+          <label for="visualizer-mode" class="text-xs font-bold text-gray-300">観察モード</label>
+          <select id="visualizer-mode" class="bg-gray-950 text-sm text-gray-200 border border-gray-800 rounded-xl p-3 focus:outline-none focus:border-blue-500 font-bold">
+            <option value="oscilloscope" selected>📊 1. 波形を見る (オシロスコープ)</option>
+            <option value="spectrum">🎚️ 2. 低音・中音・高音を見る (周波数別)</option>
+            <option value="retro">📟 3. レトロメーター (強弱インジケータ)</option>
+          </select>
+        </div>
+
+        <!-- 線の色をかえる -->
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-bold text-gray-300">波の色をかえる</label>
+          <div class="grid grid-cols-5 gap-1.5">
+            <button data-color="blue" class="color-btn h-8 rounded-lg bg-blue-500 border-2 border-white" title="ブルー"></button>
+            <button data-color="green" class="color-btn h-8 rounded-lg bg-emerald-500 border-2 border-transparent" title="グリーン"></button>
+            <button data-color="purple" class="color-btn h-8 rounded-lg bg-purple-500 border-2 border-transparent" title="パープル"></button>
+            <button data-color="orange" class="color-btn h-8 rounded-lg bg-amber-500 border-2 border-transparent" title="アンバー"></button>
+            <button data-color="white" class="color-btn h-8 rounded-lg bg-white border-2 border-transparent" title="ホワイト"></button>
+          </div>
+        </div>
+
+        <!-- 感度調整 -->
+        <div class="flex flex-col gap-1.5">
+          <div class="flex justify-between text-xs font-bold text-gray-300">
+            <span>マイクの感度 (拡大率)</span>
+            <span id="sensitivity-val" class="font-mono text-blue-400 font-bold">1.0x</span>
+          </div>
+          <input type="range" id="sensitivity" min="0.2" max="3" step="0.1" value="1.0" class="w-full h-2 bg-gray-800 rounded-lg cursor-pointer">
+        </div>
+      </div>
+      
+    </section>
+
+    <!-- 右側：ビジュアライザースクリーン（デザイン性重視・大画面） -->
+    <section class="lg:col-span-8 flex flex-col gap-4">
+      
+      <!-- メインディスプレイ -->
+      <div class="bg-gray-900 rounded-2xl border border-gray-800 p-4 shadow-2xl flex flex-col gap-3 flex-grow min-h-[380px]">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-red-500 animate-ping" id="status-indicator-ping"></span>
+            <span class="text-xs font-bold text-gray-400" id="status-indicator-text">音源の入力を待っています</span>
+          </div>
+          <div class="flex items-center gap-4 text-xs font-mono">
+            <button id="btn-freeze" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-1.5 rounded-xl border border-gray-700 flex items-center gap-1.5 transition font-bold text-xs">
+              <i class="fa-solid fa-snowflake"></i> <span>画面をとめる (一時停止)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- キャンバスコンテナ -->
+        <div class="relative flex-grow bg-black rounded-2xl overflow-hidden border border-gray-950 flex items-center justify-center min-h-[300px]">
+          <!-- レトロオシロスコープ用グリッド背景 -->
+          <div id="oscilloscope-grid" class="absolute inset-0 retro-grid pointer-events-none opacity-40"></div>
+          
+          <!-- メイン描画キャンバス -->
+          <canvas id="visualizer-canvas" class="absolute inset-0 w-full h-full z-10"></canvas>
+
+          <!-- 音がない場合のヒント表示 -->
+          <div id="no-audio-hint" class="absolute z-20 text-center p-6 bg-black/80 rounded-xl max-w-sm border border-gray-800/80 backdrop-blur-sm">
+            <div class="text-4xl text-blue-500 mb-3"><i class="fa-solid fa-music"></i></div>
+            <h3 class="text-sm font-bold text-gray-200 mb-1">音を出してみよう！</h3>
+            <p class="text-xs text-gray-400 leading-relaxed" id="audio-hint-p">
+              左側のメニューから、<strong>「マイク接続」</strong>を押して声を入れるか、<strong>「発振器」</strong>でテストの電気音を鳴らしてみましょう。
+            </p>
+          </div>
+        </div>
+
+        <!-- 生徒用：音の３つの変化ステータス（文字を大きく、シンプルに） -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-950 p-4 rounded-xl border border-gray-800 text-center font-bold">
+          
+          <div class="bg-gray-900/80 p-3 rounded-xl border border-gray-800">
+            <div class="text-[11px] text-gray-400 mb-1"><i class="fa-solid fa-text-height mr-1 text-emerald-400"></i>音の大きさ（振幅）</div>
+            <div class="text-xl md:text-2xl font-mono text-emerald-400"><span id="student-volume">0.0</span> / 100</div>
+            <div class="text-[10px] text-gray-500 font-normal mt-1">波の縦の振れ幅。大きいほど音が大きい</div>
+          </div>
+
+          <div class="bg-gray-900/80 p-3 rounded-xl border border-gray-800">
+            <div class="text-[11px] text-gray-400 mb-1"><i class="fa-solid fa-music mr-1 text-blue-400"></i>音の高さ（音名）</div>
+            <div class="text-xl md:text-2xl text-blue-400" id="student-pitch">-</div>
+            <div class="text-[10px] text-gray-500 font-normal mt-1">周波数を音符（ドレミ）に直したもの</div>
+          </div>
+
+          <div class="bg-gray-900/80 p-3 rounded-xl border border-gray-800">
+            <div class="text-[11px] text-gray-400 mb-1"><i class="fa-solid fa-arrow-up-right-dots mr-1 text-purple-400"></i>一番強い周波数（細かさ）</div>
+            <div class="text-xl md:text-2xl font-mono text-purple-400"><span id="student-freq">0</span> Hz</div>
+            <div class="text-[10px] text-gray-500 font-normal mt-1">1秒間にくり返す波の数。多いほど高い</div>
+          </div>
+
+        </div>
+
+        <!-- 教師・発展学習用：詳細パラメータ (トグル折りたたみ) -->
+        <div class="border border-gray-800 rounded-xl overflow-hidden">
+          <button id="btn-toggle-teacher-data" class="w-full bg-gray-950 text-gray-400 px-4 py-2 flex justify-between items-center text-xs hover:text-white transition">
+            <span class="font-bold"><i class="fa-solid fa-laptop-code mr-1.5 text-blue-400"></i>💻 専門的なデジタルデータを見る (先生・発展用)</span>
+            <i class="fa-solid fa-chevron-down transition-transform" id="teacher-data-icon"></i>
+          </button>
+          
+          <div id="teacher-data-panel" class="hidden bg-gray-950/40 p-4 border-t border-gray-800 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
+            <div class="bg-gray-900/40 p-2.5 rounded border border-gray-800/50">
+              <span class="text-[10px] text-gray-500 block">平均音量 (RMS)</span>
+              <span class="text-sm font-bold text-emerald-400" id="stats-rms">0.00</span>
+            </div>
+            <div class="bg-gray-900/40 p-2.5 rounded border border-gray-800/50">
+              <span class="text-[10px] text-gray-500 block">波高値 (Peak to Peak)</span>
+              <span class="text-sm font-bold text-amber-500" id="stats-p2p">0.00</span>
+            </div>
+            <div class="bg-gray-900/40 p-2.5 rounded border border-gray-800/50">
+              <span class="text-[10px] text-gray-500 block">デシベル値 (dB)</span>
+              <span class="text-sm font-bold text-purple-400" id="stats-db">-INF</span>
+            </div>
+            <div class="bg-gray-900/40 p-2.5 rounded border border-gray-800/50">
+              <span class="text-[10px] text-gray-500 block">サンプリング周波数</span>
+              <span class="text-sm font-bold text-gray-300"><span id="info-samplerate">-</span> Hz</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 技術科授業用：スピーカーの仕組み学習ガイド -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 text-xs leading-relaxed text-gray-300">
+        <h3 class="font-bold text-blue-400 mb-2 flex items-center gap-1.5 text-sm">
+          <i class="fa-solid fa-graduation-cap"></i> 技術科のポイント：スピーカーはどうやって音を出すの？
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-400">
+          <div>
+            <h4 class="font-bold text-gray-200 mb-1">📢 音が出る３ステップ：</h4>
+            <ol class="list-decimal list-inside space-y-1 text-[11px]">
+              <li>コンピュータから、強弱のある<strong>電気信号（＝画面に映る波形）</strong>がスピーカーのコイルに流れます。</li>
+              <li>コイルに電気が流れると一時的に磁石になり、元からある<strong>「永久磁石」</strong>と反発・引き合いをします。</li>
+              <li>この力でコイルと貼り付いた<strong>「コーン紙（振動板）」</strong>が前後に動き、空気を震わせて耳に届く「音」になります。</li>
+            </ol>
+          </div>
+          <div>
+            <h4 class="font-bold text-gray-200 mb-1">🔍 波形の見え方とスピーカーの動き：</h4>
+            <ul class="list-disc list-inside space-y-1 text-[11px]">
+              <li><strong>波のたて幅（振幅）が大きい：</strong>電気の力が強く、コーン紙が前後に大きく動き、大きな音になります。</li>
+              <li><strong>波の間隔が狭い（周波数が高い）：</strong>コーン紙が1秒間に何千回も細かく動き、高い音になります。</li>
+              <li><strong>複雑な波の形（音色）：</strong>コーン紙が色々な強さで混ざり合って複雑に動き、様々な声や楽器に聞こえます。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- マイク許可エラーダイアログ（マイクが使えなかった時に自動ポップアップ） -->
+  <div id="mic-error-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+    <div class="bg-gray-900 border border-red-500/50 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+      <div class="flex items-start gap-4 text-red-500">
+        <div class="text-3xl"><i class="fa-solid fa-circle-exclamation"></i></div>
+        <div>
+          <h3 class="text-lg font-bold text-white mb-2">マイクの使用許可が取得できませんでした</h3>
+          <p class="text-xs text-gray-300 leading-relaxed mb-4">
+            ブラウザの設定でマイクの使用が許可されていないか、このパソコンにマイクが接続されていない可能性があります。
+            ブラウザのアドレスバー付近のマイクアイコンから許可設定を確認してください。
+          </p>
+          <div class="mt-5 flex justify-end">
+            <button id="close-error-modal" class="bg-gray-800 hover:bg-gray-700 text-gray-400 font-bold px-4 py-2 rounded-lg text-xs transition">
+              閉じる
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- フッター -->
+  <footer class="bg-gray-950 border-t border-gray-900 p-3 text-center text-[11px] text-gray-600">
+    &copy; 2026 音の波形とスピーカーの仕組み学習用ビジュアライザー (技術分野・情報の技術デジタル教材)
+  </footer>
+
+  <script>
+    // --- グローバル変数・音響解析の設定 ---
+    let audioCtx = null;
+    let analyser = null;
+    let microphoneStream = null;
+    
+    // ソースノード保持
+    let sourceMic = null;
+    let sourceFile = null;
+    let sourceOsc = null;
+    let oscillatorNode = null;
+    let oscGainNode = null;
+
+    // 解析用バッファ
+    let dataArrayTime = null;   // 時間軸 (オシロスコープ)
+    let dataArrayFreq = null;   // 周波数
+    let bufferLength = 2048;
+
+    // 再生状態
+    let activeSource = null;    // 'mic', 'file', 'osc', null
+    let isFrozen = false;       // 一時停止状態
+    let currentThemeColor = '#3b82f6'; // デフォルト青
+
+    // 音声グラフの多重接続を防ぐためのフラグ(バグ修正)
+    // analyser->destination と sourceFile->analyser は、一度接続したら
+    // 二度と作り直したり再接続したりしてはいけない(重複接続で音量が二重になったり、
+    // createMediaElementSourceの再実行で例外が発生するため)
+    let analyserConnectedToDestination = false;
+    let fileConnectedToAnalyser = false;
+
+    function ensureAnalyserToDestination() {
+      if (!analyserConnectedToDestination) {
+        analyser.connect(audioCtx.destination);
+        analyserConnectedToDestination = true;
+      }
+    }
+
+    // DOM要素の取得
+    const canvas = document.getElementById('visualizer-canvas');
+    const canvasCtx = canvas.getContext('2d');
+    const oscGrid = document.getElementById('oscilloscope-grid');
+    const noAudioHint = document.getElementById('no-audio-hint');
+
+    // タブパネル
+    const tabMic = document.getElementById('tab-mic');
+    const tabFile = document.getElementById('tab-file');
+    const tabOsc = document.getElementById('tab-osc');
+    const panelMic = document.getElementById('panel-mic');
+    const panelFile = document.getElementById('panel-file');
+    const panelOsc = document.getElementById('panel-osc');
+
+    // 各ソースのボタン群
+    const btnMicStart = document.getElementById('btn-mic-start');
+    const btnMicStop = document.getElementById('btn-mic-stop');
+    const micStatus = document.getElementById('mic-status');
+
+    const fileInput = document.getElementById('file-input');
+    const fileName = document.getElementById('file-name');
+    const audioPlayer = document.getElementById('audio-player');
+    const btnPlayPause = document.getElementById('btn-play-pause');
+    const fileProgress = document.getElementById('file-progress');
+    const fileTime = document.getElementById('file-time');
+
+    const btnOscStart = document.getElementById('btn-osc-start');
+    const btnOscStop = document.getElementById('btn-osc-stop');
+    const oscVolume = document.getElementById('osc-volume');
+    const oscFrequency = document.getElementById('osc-frequency');
+    const oscVolVal = document.getElementById('osc-vol-val');
+    const oscFreqVal = document.getElementById('osc-freq-val');
+
+    // 発振器用プリセットボタン
+    const btnPresetLow = document.getElementById('btn-preset-low');
+    const btnPresetMid = document.getElementById('btn-preset-mid');
+    const btnPresetHigh = document.getElementById('btn-preset-high');
+
+    // 表示系・計測数値系
+    const visualizerMode = document.getElementById('visualizer-mode');
+    const sensitivity = document.getElementById('sensitivity');
+    const sensitivityVal = document.getElementById('sensitivity-val');
+    const btnFreeze = document.getElementById('btn-freeze');
+
+    // 生徒用簡略化ステータスボード
+    const studentVolume = document.getElementById('student-volume');
+    const studentPitch = document.getElementById('student-pitch');
+    const studentFreq = document.getElementById('student-freq');
+
+    // 専門用折りたたみ
+    const btnToggleTeacherData = document.getElementById('btn-toggle-teacher-data');
+    const teacherDataPanel = document.getElementById('teacher-data-panel');
+    const teacherDataIcon = document.getElementById('teacher-data-icon');
+
+    // 分析値ディスプレイ（教員用詳細）
+    const statsRms = document.getElementById('stats-rms');
+    const statsP2P = document.getElementById('stats-p2p');
+    const statsDb = document.getElementById('stats-db');
+    
+    const infoSampleRate = document.getElementById('info-samplerate');
+    const statusIndicatorPing = document.getElementById('status-indicator-ping');
+    const statusIndicatorText = document.getElementById('status-indicator-text');
+
+    // エラーダイアログ
+    const micErrorModal = document.getElementById('mic-error-modal');
+    const closeErrorModal = document.getElementById('close-error-modal');
+
+    // カラーパレットマッピング
+    const colors = {
+      blue: '#3b82f6',
+      green: '#10b981',
+      purple: '#a855f7',
+      orange: '#f59e0b',
+      white: '#ffffff'
+    };
+
+    // --- 発振器周波数プリセットロジック ---
+    function setOscFrequency(freqVal) {
+      oscFrequency.value = freqVal;
+      oscFreqVal.textContent = freqVal + " Hz";
+      if (oscillatorNode) {
+        oscillatorNode.frequency.setValueAtTime(freqVal, audioCtx.currentTime);
+      }
+    }
+
+    btnPresetLow.addEventListener('click', () => setOscFrequency(220));
+    btnPresetMid.addEventListener('click', () => setOscFrequency(440));
+    btnPresetHigh.addEventListener('click', () => setOscFrequency(880));
+
+    // --- 先生用詳細トグルの開閉 ---
+    btnToggleTeacherData.addEventListener('click', () => {
+      const isHidden = teacherDataPanel.classList.contains('hidden');
+      if (isHidden) {
+        teacherDataPanel.classList.remove('hidden');
+        teacherDataIcon.classList.add('rotate-180');
+      } else {
+        teacherDataPanel.classList.add('hidden');
+        teacherDataIcon.classList.remove('rotate-180');
+      }
+    });
+
+    // --- 初期化 & キャンバスサイズ自動調整 ---
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // オシロスコープ時のみグリッドを表示(バグ修正: 毎フレームではなく、
+    // モードが実際に変わった時だけクラスを切り替える。毎フレーム実行すると
+    // TailwindのCDN版が持つMutationObserverが毎回スタイル再計算を行い、
+    // 波形描画がカクつく原因になっていたため)
+    function updateGridVisibility() {
+      if (visualizerMode.value === 'oscilloscope') {
+        oscGrid.classList.remove('opacity-0');
+        oscGrid.classList.add('opacity-40');
+      } else {
+        oscGrid.classList.remove('opacity-40');
+        oscGrid.classList.add('opacity-0');
+      }
+    }
+    visualizerMode.addEventListener('change', updateGridVisibility);
+    updateGridVisibility();
+
+    // Web Audio APIの初期設定
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = bufferLength;
+        
+        const bufferLengthFreq = analyser.frequencyBinCount;
+        dataArrayTime = new Uint8Array(bufferLength);
+        dataArrayFreq = new Uint8Array(bufferLengthFreq);
+
+        if (infoSampleRate) infoSampleRate.textContent = audioCtx.sampleRate;
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    // すべての音響ソースを停止しクリアする
+    function stopAllSources() {
+      isFrozen = false;
+      btnFreeze.innerHTML = `<i class="fa-solid fa-snowflake"></i> <span>画面をとめる (一時停止)</span>`;
+
+      // 1. マイクの停止
+      if (microphoneStream) {
+        microphoneStream.getTracks().forEach(track => track.stop());
+        microphoneStream = null;
+      }
+      btnMicStart.disabled = false;
+      btnMicStop.disabled = true;
+      btnMicStop.classList.add('cursor-not-allowed', 'text-gray-400');
+      if (micStatus) micStatus.textContent = "マイクは接続されていません";
+
+      // 2. 音声ファイルの停止
+      audioPlayer.pause();
+      btnPlayPause.innerHTML = `<i class="fa-solid fa-play"></i>`;
+
+      // 3. 発振器の停止
+      if (oscillatorNode) {
+        try {
+          oscillatorNode.stop();
+        } catch(e) {}
+        oscillatorNode.disconnect();
+        oscillatorNode = null;
+      }
+      if (oscGainNode) {
+        oscGainNode.disconnect();
+        oscGainNode = null;
+      }
+      btnOscStart.disabled = false;
+      btnOscStop.disabled = true;
+      btnOscStop.classList.add('cursor-not-allowed', 'text-gray-400');
+
+      // アクティブソース解除
+      activeSource = null;
+      updateStatusDisplay("音源の入力を待っています", false);
+    }
+
+    // ステータス表示更新
+    function updateStatusDisplay(text, isActive) {
+      if (statusIndicatorText) statusIndicatorText.textContent = text;
+      if (isActive) {
+        if (statusIndicatorPing) {
+          statusIndicatorPing.classList.add('bg-red-500', 'animate-ping');
+          statusIndicatorPing.classList.remove('bg-gray-600');
+        }
+        if (noAudioHint) noAudioHint.classList.add('hidden');
+      } else {
+        if (statusIndicatorPing) {
+          statusIndicatorPing.classList.remove('bg-red-500', 'animate-ping');
+          statusIndicatorPing.classList.add('bg-gray-600');
+        }
+        if (noAudioHint) noAudioHint.classList.remove('hidden');
+      }
+    }
+
+    // --- タブ切り替え処理 ---
+    function switchTab(activeTab, activePanel) {
+      [tabMic, tabFile, tabOsc].forEach(tab => {
+        if (tab) {
+          tab.classList.remove('bg-blue-600', 'text-white');
+          tab.classList.add('text-gray-400', 'hover:text-white');
+        }
+      });
+      [panelMic, panelFile, panelOsc].forEach(panel => {
+        if (panel) panel.classList.add('hidden');
+      });
+
+      if (activeTab) {
+        activeTab.classList.remove('text-gray-400', 'hover:text-white');
+        activeTab.classList.add('bg-blue-600', 'text-white');
+      }
+      if (activePanel) activePanel.classList.remove('hidden');
+
+      stopAllSources();
+    }
+
+    tabMic.addEventListener('click', () => switchTab(tabMic, panelMic));
+    tabFile.addEventListener('click', () => switchTab(tabFile, panelFile));
+    tabOsc.addEventListener('click', () => switchTab(tabOsc, panelOsc));
+
+
+    // --- 1. マイク機能 ---
+    btnMicStart.addEventListener('click', async () => {
+      initAudio();
+      stopAllSources();
+
+      try {
+        microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        sourceMic = audioCtx.createMediaStreamSource(microphoneStream);
+        sourceMic.connect(analyser);
+
+        activeSource = 'mic';
+        btnMicStart.disabled = true;
+        btnMicStop.disabled = false;
+        btnMicStop.classList.remove('cursor-not-allowed', 'text-gray-400');
+        if (micStatus) micStatus.textContent = "● マイクがつながっています";
+        updateStatusDisplay("マイクの声を分析しています", true);
+
+        draw(); 
+      } catch (err) {
+        console.error("マイクアクセスエラー:", err);
+        if (micErrorModal) micErrorModal.classList.remove('hidden');
+        stopAllSources();
+      }
+    });
+
+    btnMicStop.addEventListener('click', () => {
+      stopAllSources();
+    });
+
+    closeErrorModal.addEventListener('click', () => {
+      if (micErrorModal) micErrorModal.classList.add('hidden');
+    });
+
+
+    // --- 2. 音声ファイル機能 ---
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      stopAllSources();
+      if (fileName) fileName.textContent = file.name;
+
+      const fileURL = URL.createObjectURL(file);
+      audioPlayer.src = fileURL;
+      audioPlayer.load();
+
+      btnPlayPause.disabled = false;
+      btnPlayPause.innerHTML = `<i class="fa-solid fa-play"></i>`;
+    });
+
+    btnPlayPause.addEventListener('click', () => {
+      initAudio();
+      
+      if (audioPlayer.paused) {
+        if (activeSource !== 'file') {
+          stopAllSources();
+          // createMediaElementSourceは同じ<audio>要素に対して一度しか呼べない
+          // (2回目を呼ぶと例外が発生してファイル再生が壊れるバグがあったため、
+          // 一度作ったノードを使い回す)
+          if (!sourceFile) {
+            sourceFile = audioCtx.createMediaElementSource(audioPlayer);
+          }
+          if (!fileConnectedToAnalyser) {
+            sourceFile.connect(analyser);
+            fileConnectedToAnalyser = true;
+          }
+          ensureAnalyserToDestination();
+        }
+
+        audioPlayer.play();
+        activeSource = 'file';
+        btnPlayPause.innerHTML = `<i class="fa-solid fa-pause"></i>`;
+        updateStatusDisplay("音楽ファイルの信号を観察しています", true);
+        draw();
+      } else {
+        audioPlayer.pause();
+        btnPlayPause.innerHTML = `<i class="fa-solid fa-play"></i>`;
+        updateStatusDisplay("一時停止中", false);
+      }
+    });
+
+    audioPlayer.addEventListener('timeupdate', () => {
+      if (audioPlayer.duration) {
+        const pct = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+        if (fileProgress) fileProgress.style.width = pct + '%';
+        
+        const curMin = Math.floor(audioPlayer.currentTime / 60);
+        const curSec = Math.floor(audioPlayer.currentTime % 60).toString().padStart(2, '0');
+        const durMin = Math.floor(audioPlayer.duration / 60);
+        const durSec = Math.floor(audioPlayer.duration % 60).toString().padStart(2, '0');
+        if (fileTime) fileTime.textContent = `${curMin}:${curSec} / ${durMin}:${durSec}`;
+      }
+    });
+
+    audioPlayer.addEventListener('ended', () => {
+      btnPlayPause.innerHTML = `<i class="fa-solid fa-play"></i>`;
+      updateStatusDisplay("再生がおわりました", false);
+    });
+
+
+    // --- 3. 発振器 (シンセサイザー) 機能 ---
+    let activeOscType = 'sine';
+    const oscTypes = {
+      'osc-type-sine': 'sine',
+      'osc-type-triangle': 'triangle',
+      'osc-type-square': 'square',
+      'osc-type-sawtooth': 'sawtooth'
+    };
+
+    Object.keys(oscTypes).forEach(id => {
+      const element = document.getElementById(id);
+      if (element) {
+        element.addEventListener('click', (e) => {
+          Object.keys(oscTypes).forEach(k => {
+            const el = document.getElementById(k);
+            if (el) {
+              el.classList.remove('bg-blue-600', 'text-white');
+              el.classList.add('text-gray-400', 'hover:text-white');
+            }
+          });
+          e.target.classList.remove('text-gray-400', 'hover:text-white');
+          e.target.classList.add('bg-blue-600', 'text-white');
+          
+          activeOscType = oscTypes[id];
+          if (oscillatorNode) {
+            oscillatorNode.type = activeOscType;
+          }
+        });
+      }
+    });
+
+    oscVolume.addEventListener('input', (e) => {
+      const vol = parseFloat(e.target.value);
+      if (oscVolVal) oscVolVal.textContent = Math.round(vol * 100) + '%';
+      if (oscGainNode) {
+        oscGainNode.gain.setValueAtTime(vol * 0.1, audioCtx.currentTime); 
+      }
+    });
+
+    oscFrequency.addEventListener('input', (e) => {
+      const freq = parseInt(e.target.value);
+      if (oscFreqVal) oscFreqVal.textContent = freq + ' Hz';
+      if (oscillatorNode) {
+        oscillatorNode.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      }
+    });
+
+    btnOscStart.addEventListener('click', () => {
+      initAudio();
+      stopAllSources();
+
+      oscillatorNode = audioCtx.createOscillator();
+      oscGainNode = audioCtx.createGain();
+
+      oscillatorNode.type = activeOscType;
+      oscillatorNode.frequency.setValueAtTime(parseInt(oscFrequency.value), audioCtx.currentTime);
+      
+      oscGainNode.gain.setValueAtTime(parseFloat(oscVolume.value) * 0.1, audioCtx.currentTime);
+
+      oscillatorNode.connect(oscGainNode);
+      oscGainNode.connect(analyser);
+      ensureAnalyserToDestination();
+
+      oscillatorNode.start();
+      
+      activeSource = 'osc';
+      btnOscStart.disabled = true;
+      btnOscStop.disabled = false;
+      btnOscStop.classList.remove('cursor-not-allowed', 'text-gray-400');
+      updateStatusDisplay("発振テスト電気信号を出力中（音が聞こえます）", true);
+
+      draw();
+    });
+
+    btnOscStop.addEventListener('click', () => {
+      stopAllSources();
+    });
+
+
+    // --- カラーセレクターの処理 ---
+    document.querySelectorAll('.color-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.color-btn').forEach(b => b.classList.replace('border-white', 'border-transparent'));
+        e.target.classList.replace('border-transparent', 'border-white');
+        const colorKey = e.target.getAttribute('data-color');
+        currentThemeColor = colors[colorKey];
+      });
+    });
+
+
+    // --- 感度スライダー連動 ---
+    sensitivity.addEventListener('input', (e) => {
+      if (sensitivityVal) sensitivityVal.textContent = parseFloat(e.target.value).toFixed(1) + 'x';
+    });
+
+
+    // --- 表示一時停止 (フリーズ機能) ---
+    btnFreeze.addEventListener('click', () => {
+      if (!activeSource) return;
+
+      isFrozen = !isFrozen;
+      if (isFrozen) {
+        btnFreeze.innerHTML = `<i class="fa-solid fa-play"></i> <span>電気の波形を描きなおす (再開)</span>`;
+        if (statusIndicatorText) statusIndicatorText.textContent = "表示を一時停止しています（観察用）";
+        if (statusIndicatorPing) statusIndicatorPing.classList.remove('animate-ping');
+      } else {
+        btnFreeze.innerHTML = `<i class="fa-solid fa-snowflake"></i> <span>画面をとめる (一時停止)</span>`;
+        if (statusIndicatorText) statusIndicatorText.textContent = "観察中...";
+        if (statusIndicatorPing) statusIndicatorPing.classList.add('animate-ping');
+        draw();
+      }
+    });
+
+
+    // --- ピーク周波数と音名の検出 ---
+    function getPeakFrequencyAndNote() {
+      if (!analyser) return { freq: 0, note: "-" };
+      
+      let maxVal = -1;
+      let maxIndex = -1;
+      const limitIndex = Math.min(analyser.frequencyBinCount, 250); 
+      
+      for (let i = 2; i < limitIndex; i++) { 
+        if (dataArrayFreq[i] > maxVal) {
+          maxVal = dataArrayFreq[i];
+          maxIndex = i;
+        }
+      }
+
+      if (maxVal < 15) return { freq: 0, note: "無音" };
+
+      const sampleRate = audioCtx.sampleRate;
+      const fftSize = analyser.fftSize;
+      const peakFreq = Math.round(maxIndex * sampleRate / fftSize);
+
+      // アルファベット表記 (C, D, E...) を除外し、ドレミ表記のみに設定
+      const noteNames = ["ド", "ド#", "レ", "レ#", "ミ", "ファ", "ファ#", "ソ", "ソ#", "ラ", "ラ#", "シ"];
+      if (peakFreq > 16) { 
+        const midiNote = Math.round(12 * Math.log2(peakFreq / 440) + 69);
+        if (midiNote >= 0 && midiNote < 128) {
+          const noteIndex = midiNote % 12;
+          
+          // 生徒用のざっくりとした音階表記
+          let pitchName = noteNames[noteIndex];
+          if (peakFreq < 260) {
+            pitchName += " (低い音)";
+          } else if (peakFreq > 600) {
+            pitchName += " (高い音)";
+          } else {
+            pitchName += " (中間の音)";
+          }
+          return { freq: peakFreq, note: pitchName };
+        }
+      }
+
+      return { freq: peakFreq, note: "-" };
+    }
+
+
+    // --- 音量(RMS、デシベル、P2P)の計算 ---
+    function calculateAcoustics(timeBuffer) {
+      let sumSquares = 0;
+      let minVal = 255;
+      let maxVal = 0;
+
+      for (let i = 0; i < timeBuffer.length; i++) {
+        const normalized = (timeBuffer[i] - 128) / 128;
+        sumSquares += normalized * normalized;
+
+        if (timeBuffer[i] < minVal) minVal = timeBuffer[i];
+        if (timeBuffer[i] > maxVal) maxVal = timeBuffer[i];
+      }
+
+      const rms = Math.sqrt(sumSquares / timeBuffer.length);
+      const p2p = (maxVal - minVal) / 128;
+
+      let db = -Infinity;
+      if (rms > 0) {
+        db = Math.round(20 * Math.log10(rms));
+      }
+
+      return { rms, p2p, db };
+    }
+
+
+    // --- メイン描画ループ (アニメーション) ---
+    function draw() {
+      if (!activeSource || isFrozen) return;
+
+      requestAnimationFrame(draw);
+
+      // 音響データを取得
+      analyser.getByteTimeDomainData(dataArrayTime);
+      analyser.getByteFrequencyData(dataArrayFreq);
+
+      const sens = parseFloat(sensitivity.value);
+
+      // 各音響パラメータの算出
+      const acoustics = calculateAcoustics(dataArrayTime);
+      const rmsValue = acoustics.rms * sens;
+      const p2pValue = acoustics.p2p * sens;
+      const dbValue = acoustics.db;
+
+      // 生徒用簡略化データの更新
+      const simplifiedVolume = Math.min(100, Math.round(rmsValue * 150));
+      if (studentVolume) studentVolume.textContent = simplifiedVolume.toFixed(0);
+      
+      const frequencyInfo = getPeakFrequencyAndNote();
+      if (studentFreq) studentFreq.textContent = frequencyInfo.freq;
+      if (studentPitch) studentPitch.textContent = frequencyInfo.note;
+
+      // 教師用詳細の更新
+      if (statsRms) statsRms.textContent = rmsValue.toFixed(3);
+      if (statsP2P) statsP2P.textContent = p2pValue.toFixed(3);
+      if (statsDb) statsDb.textContent = isFinite(dbValue) ? dbValue + " dB" : "-INF";
+
+      // キャンバスクリア
+      canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const mode = visualizerMode.value;
+
+      // 3モードの分岐描画
+      switch(mode) {
+        case 'oscilloscope':
+          drawOscilloscope(sens);
+          break;
+        case 'spectrum':
+          drawSpectrum(sens);
+          break;
+        case 'retro':
+          drawRetroAudio(sens);
+          break;
+      }
+    }
+
+
+    // --- 描画1: 通常のオシロスコープ ---
+    function drawOscilloscope(sens) {
+      canvasCtx.lineWidth = 3;
+      canvasCtx.strokeStyle = currentThemeColor;
+      canvasCtx.shadowBlur = 10;
+      canvasCtx.shadowColor = currentThemeColor;
+      canvasCtx.beginPath();
+
+      const sliceWidth = canvas.width / bufferLength;
+      let x = 0;
+
+      for (let i = 0; i < bufferLength; i++) {
+        const v = dataArrayTime[i] / 128.0; 
+        const offset = (v - 1.0) * sens;
+        const y = (1.0 + offset) * (canvas.height / 2);
+
+        if (i === 0) {
+          canvasCtx.moveTo(x, y);
+        } else {
+          canvasCtx.lineTo(x, y);
+        }
+
+        x += sliceWidth;
+      }
+
+      canvasCtx.lineTo(canvas.width, canvas.height / 2);
+      canvasCtx.stroke();
+      canvasCtx.shadowBlur = 0; // リセット
+    }
+
+
+    // --- 描画2: 周波数別表示 (低音・中音・高音) ---
+    function drawSpectrum(sens) {
+      const barCount = 30; // 簡略化して見やすく
+      const barWidth = (canvas.width / barCount) - 4;
+      let x = 5;
+
+      canvasCtx.shadowBlur = 6;
+      canvasCtx.shadowColor = currentThemeColor;
+
+      for (let i = 0; i < barCount; i++) {
+        const dataIndex = Math.floor(Math.pow(i / barCount, 1.4) * (dataArrayFreq.length * 0.6));
+        const rawValue = dataArrayFreq[dataIndex] || 0;
+        const barHeight = (rawValue / 255) * canvas.height * sens * 0.85;
+
+        canvasCtx.fillStyle = currentThemeColor;
+        canvasCtx.fillRect(x, canvas.height - barHeight - 40, barWidth, barHeight);
+
+        x += barWidth + 4;
+      }
+      canvasCtx.shadowBlur = 0;
+
+      // 下部に「低音」「中音」「高音」のテキストラベルを配置
+      canvasCtx.fillStyle = '#9ca3af';
+      canvasCtx.font = 'bold 12px sans-serif';
+      canvasCtx.textAlign = 'left';
+      canvasCtx.fillText('← 低い音 (ベースなど)', 20, canvas.height - 15);
+      canvasCtx.textAlign = 'center';
+      canvasCtx.fillText('中間の音 (ひとの声など)', canvas.width / 2, canvas.height - 15);
+      canvasCtx.textAlign = 'right';
+      canvasCtx.fillText('高い音 (すず・金属性の音) →', canvas.width - 20, canvas.height - 15);
+    }
+
+
+    // --- 描画3: レトロコーン振動イメージメーター ---
+    function drawRetroAudio(sens) {
+      const columnCount = 15; 
+      const rowCount = 10;    
+      
+      const paddingX = 18;
+      const totalPadding = paddingX * (rowCount - 1);
+      const colWidth = Math.min(55, (canvas.width - totalPadding - 40) / rowCount);
+      const startX = (canvas.width - (colWidth * rowCount + totalPadding)) / 2;
+      const blockHeight = (canvas.height - 90) / columnCount;
+
+      for (let r = 0; r < rowCount; r++) {
+        const dataIndex = Math.floor(Math.pow(r / rowCount, 1.4) * (dataArrayFreq.length * 0.5));
+        const rawValue = dataArrayFreq[dataIndex] || 0;
+        const activeBlocks = Math.min(columnCount, Math.round((rawValue / 255) * columnCount * sens * 1.1));
+
+        const x = startX + r * (colWidth + paddingX);
+
+        for (let c = 0; c < columnCount; c++) {
+          const isLit = c < activeBlocks;
+          const y = canvas.height - 50 - (c * blockHeight);
+
+          // 昭和オーディオ3色
+          let blockColor = 'rgba(16, 185, 129, 0.12)'; 
+          if (isLit) {
+            if (c >= columnCount - 2) {
+              blockColor = '#ef4444'; // 赤
+            } else if (c >= columnCount - 5) {
+              blockColor = '#f59e0b'; // 黄
+            } else {
+              blockColor = '#10b981'; // 緑
+            }
+          }
+
+          canvasCtx.fillStyle = blockColor;
+          canvasCtx.beginPath();
+          canvasCtx.roundRect(x, y, colWidth, blockHeight - 3, 3);
+          canvasCtx.fill();
+        }
+
+        // 周波数簡易表示
+        canvasCtx.fillStyle = '#6b7280';
+        canvasCtx.font = 'bold 10px monospace';
+        canvasCtx.textAlign = 'center';
+        const labels = ["低音1", "低音2", "低中", "中音1", "中音2", "中高", "高音1", "高音2", "超高1", "超高2"];
+        canvasCtx.fillText(labels[r], x + colWidth/2, canvas.height - 25);
+      }
+    }
+
+  </script>
+</body>
+</html>
